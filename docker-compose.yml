@@ -1,0 +1,145 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mare
+    volumes:
+      - /mnt/user/appdata/mare/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mare -d mare || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [mare]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command:
+      - redis-server
+      - --appendonly yes
+      - --maxmemory 4gb
+      - --maxmemory-policy allkeys-lru
+      - --tcp-keepalive 300
+      - --io-threads 4
+    volumes:
+      - /mnt/user/appdata/mare/redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 5gb
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [mare]
+    restart: unless-stopped
+
+  mare-main:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: runtime-main
+    env_file: [.env]
+    environment:
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=mare;Username=mare;Password=${POSTGRES_PASSWORD}
+      MareSynchronos__RedisConnectionString: redis:6379
+      MareSynchronos__Jwt: ${MARE_JWT}
+      MareSynchronos__CdnFullUrl: ${MARE_PUBLIC_BASE}/cache/
+      MareSynchronos__ServiceAddress: http://mare-services:5002
+      MareSynchronos__StaticFileServiceAddress: http://mare-files:5001
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [mare]
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  mare-files:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: runtime-files
+    env_file: [.env]
+    environment:
+      ASPNETCORE_URLS: http://+:5001
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=mare;Username=mare;Password=${POSTGRES_PASSWORD}
+      MareSynchronos__RedisConnectionString: redis:6379
+      MareSynchronos__Jwt: ${MARE_JWT}
+      MareSynchronos__MainServerAddress: ${MARE_PUBLIC_BASE}/
+      MareSynchronos__CacheDirectory: /data/cache
+      MareSynchronos__IsDistributionNode: "false"
+      MareSynchronos__CdnFullUrl: ${MARE_PUBLIC_BASE}/cache/
+      MareSynchronos__DownloadQueueSize: 100
+      MareSynchronos__DownloadTimeoutSeconds: 60
+      MareSynchronos__DownloadQueueReleaseSeconds: 30
+      MareSynchronos__DownloadQueueClearLimit: 30000
+      MareSynchronos__CacheSmallSizeThresholdKiB: 128
+      MareSynchronos__CacheLargeSizeThresholdKiB: 2048
+    volumes:
+      - /mnt/user/appdata/mare/cache:/data/cache
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      mare-main:
+        condition: service_started
+    networks: [mare]
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+
+  mare-auth:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: runtime-auth
+    env_file: [.env]
+    environment:
+      ASPNETCORE_URLS: http://+:5056
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=mare;Username=mare;Password=${POSTGRES_PASSWORD}
+      MareSynchronos__RedisConnectionString: redis:6379
+      MareSynchronos__Jwt: ${MARE_JWT}
+      MareSynchronos__MainServerAddress: ${MARE_PUBLIC_BASE}/
+      MareSynchronos__UseGeoIP: "true"
+      MareSynchronos__GeoIPDbCityFile: "/data/GeoLite2-City.mmdb"
+    volumes:
+      - /mnt/user/appdata/mare/GeoLite2-City.mmdb:/data/GeoLite2-City.mmdb:ro
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      mare-main:
+        condition: service_started
+    networks: [mare]
+    ports:
+      - "5056:5056"
+    restart: unless-stopped
+
+  mare-services:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: runtime-services
+    env_file: [.env]
+    environment:
+      ASPNETCORE_URLS: http://+:5002
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=mare;Username=mare;Password=${POSTGRES_PASSWORD}
+      MareSynchronos__RedisConnectionString: redis:6379
+      MareSynchronos__Jwt: ${MARE_JWT}
+      MareSynchronos__MainServerAddress: ${MARE_PUBLIC_BASE}/
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      mare-main:
+        condition: service_started
+    networks: [mare]
+    restart: unless-stopped
+
+networks:
+  mare:
+    name: mare-net
+volumes: {}
