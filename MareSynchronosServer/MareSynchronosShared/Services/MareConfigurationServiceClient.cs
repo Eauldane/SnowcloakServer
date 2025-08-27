@@ -22,8 +22,6 @@ public class MareConfigurationServiceClient<T> : IHostedService, IConfigurationS
     private readonly CancellationTokenSource _updateTaskCts = new();
     private bool _initialized = false;
     private readonly HttpClient _httpClient;
-    public event EventHandler ConfigChangedEvent;
-    private IDisposable _onChanged;
 
     private Uri GetRoute(string key, string value)
     {
@@ -45,7 +43,6 @@ public class MareConfigurationServiceClient<T> : IHostedService, IConfigurationS
         _logger = logger;
         _serverTokenGenerator = serverTokenGenerator;
         _httpClient = new();
-        _onChanged = config.OnChange((c) => { ConfigChangedEvent?.Invoke(this, EventArgs.Empty); });
     }
 
     public bool IsMain => false;
@@ -125,52 +122,6 @@ public class MareConfigurationServiceClient<T> : IHostedService, IConfigurationS
         }
     }
 
-    private Uri? GetBaseAddress()
-    {
-        if (_config.CurrentValue is ServerConfiguration sc) return sc.MainServerAddress;
-        if (_config.CurrentValue is MareConfigurationBase mb) return mb.MainServerAddress;
-        if (_config.CurrentValue is ServicesConfiguration svc) return svc.MainServerAddress;
-        if (_config.CurrentValue is StaticFilesServerConfiguration sfs) return sfs.MainFileServerAddress;
-        return null;
-    }
-
-    private async Task WaitForHealthAsync(CancellationToken ct)
-    {
-        var baseAddress = GetBaseAddress();
-        if (baseAddress == null) return;
-
-        Uri healthUri;
-        try
-        {
-            healthUri = new Uri(baseAddress, "health");
-        }
-        catch
-        {
-            return;
-        }
-
-        _logger.LogInformation("Waiting for configuration host health at {uri}", healthUri);
-        for (int i = 0; i < 120 && !ct.IsCancellationRequested; i++)
-        {
-            try
-            {
-                using var req = new HttpRequestMessage(HttpMethod.Get, healthUri);
-                using var resp = await _httpClient.SendAsync(req, ct).ConfigureAwait(false);
-                if (resp.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("Configuration host is healthy");
-                    return;
-                }
-            }
-            catch
-            {
-                // ignore and retry
-            }
-
-            try { await Task.Delay(TimeSpan.FromSeconds(0.5), ct).ConfigureAwait(false); } catch { }
-        }
-    }
-
     private async Task UpdateRemoteProperties(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -225,7 +176,6 @@ public class MareConfigurationServiceClient<T> : IHostedService, IConfigurationS
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting MareConfigurationServiceClient");
-        await WaitForHealthAsync(cancellationToken).ConfigureAwait(false);
         _ = UpdateRemoteProperties(_updateTaskCts.Token);
         while (!_initialized && !cancellationToken.IsCancellationRequested) await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
     }
@@ -234,7 +184,6 @@ public class MareConfigurationServiceClient<T> : IHostedService, IConfigurationS
     {
         _updateTaskCts.Cancel();
         _httpClient.Dispose();
-        _onChanged?.Dispose();
         return Task.CompletedTask;
     }
 }
