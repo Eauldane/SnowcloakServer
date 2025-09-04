@@ -103,9 +103,15 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
     [Authorize(Policy = "Authenticated")]
     public async Task<bool> CheckClientHealth()
     {
-        await UpdateUserOnRedis().ConfigureAwait(false);
-
-        return false;
+        try
+        {
+            await UpdateUserOnRedis().ConfigureAwait(false);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     [Authorize(Policy = "Authenticated")]
@@ -127,18 +133,24 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
     [Authorize(Policy = "Authenticated")]
     public override async Task OnDisconnectedAsync(Exception exception)
     {
+        DateTime _lastdc = DateTime.UtcNow;
         _mareMetrics.DecGaugeWithLabels(MetricsAPI.GaugeConnections, labels: Continent);
-
         try
         {
-            _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
-            if (exception != null)
-                _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
+            // Check DB to see if the user reconnected after this disconnect
+            await Task.Delay(TimeSpan.FromSeconds(7)).ConfigureAwait(false);
+            var dbUser = await DbContext.Users.AsNoTracking().SingleOrDefaultAsync(u => u.UID == UserUID).ConfigureAwait(false);
+            if (dbUser != null && dbUser.LastLoggedIn < _lastdc)
+            {
+                _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
+                if (exception != null)
+                    _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
 
-            await GposeLobbyLeave().ConfigureAwait(false);
-            await RemoveUserFromRedis().ConfigureAwait(false);
+                await GposeLobbyLeave().ConfigureAwait(false);
+                await RemoveUserFromRedis().ConfigureAwait(false);
 
-            await SendOfflineToAllPairedUsers().ConfigureAwait(false);
+                await SendOfflineToAllPairedUsers().ConfigureAwait(false);
+            }
         }
         catch { }
 
