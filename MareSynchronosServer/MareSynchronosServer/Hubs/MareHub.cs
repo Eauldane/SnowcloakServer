@@ -138,7 +138,7 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
         try
         {
             // Check DB to see if the user reconnected after this disconnect
-            await Task.Delay(TimeSpan.FromSeconds(7)).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
             var dbUser = await DbContext.Users.AsNoTracking().SingleOrDefaultAsync(u => u.UID == UserUID).ConfigureAwait(false);
             if (dbUser != null && dbUser.LastLoggedIn < _lastdc)
             {
