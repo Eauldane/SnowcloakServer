@@ -81,7 +81,7 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
         await DbContext.SaveChangesAsync().ConfigureAwait(false);
 
         await Clients.Caller.Client_ReceiveServerMessage(MessageSeverity.Information, "Welcome to Snowcloak! Current Online Users: " + _systemInfoService.SystemInfoDto.OnlineUsers).ConfigureAwait(false);
-
+        Context.Items["IsClientConnected"] = true;
         return new ConnectionDto(new UserData(dbUser.UID, string.IsNullOrWhiteSpace(dbUser.Alias) ? null : dbUser.Alias))
         {
             CurrentClientVersion = _expectedClientVersion,
@@ -103,9 +103,16 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
     [Authorize(Policy = "Authenticated")]
     public async Task<bool> CheckClientHealth()
     {
-        await UpdateUserOnRedis().ConfigureAwait(false);
+        // Key missing -> health check failed!
+        var exists = await _redis.ExistsAsync("UID:" + UserUID).ConfigureAwait(false);
+        if (!exists)
+        {
+            return false;
+        }
 
-        return false;
+        // Key exists -> health is good!
+        await UpdateUserOnRedis().ConfigureAwait(false);
+        return true;
     }
 
     [Authorize(Policy = "Authenticated")]
@@ -115,8 +122,7 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
 
         try
         {
-            _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
-
+            _logger.LogCallInfo(MareHubLogger.Args("A client reconnected.", _contextAccessor.GetIpAddress(), UserCharaIdent));
             await UpdateUserOnRedis().ConfigureAwait(false);
         }
         catch { }
@@ -128,17 +134,15 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
     public override async Task OnDisconnectedAsync(Exception exception)
     {
         _mareMetrics.DecGaugeWithLabels(MetricsAPI.GaugeConnections, labels: Continent);
-
         try
         {
-            _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
-            if (exception != null)
-                _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
+                _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
+                if (exception != null)
+                    _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
 
-            await GposeLobbyLeave().ConfigureAwait(false);
-            await RemoveUserFromRedis().ConfigureAwait(false);
-
-            await SendOfflineToAllPairedUsers().ConfigureAwait(false);
+                await GposeLobbyLeave().ConfigureAwait(false);
+                await RemoveUserFromRedis().ConfigureAwait(false);
+                await SendOfflineToAllPairedUsers().ConfigureAwait(false);
         }
         catch { }
 
