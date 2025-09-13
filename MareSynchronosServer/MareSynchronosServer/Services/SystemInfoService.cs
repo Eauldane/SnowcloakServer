@@ -25,7 +25,7 @@ public class SystemInfoService : IHostedService, IDisposable
     public SystemInfoDto SystemInfoDto { get; private set; } = new();
 
     public SystemInfoService(MareMetrics mareMetrics, IConfigurationService<ServerConfiguration> configurationService, IServiceProvider services,
-        ILogger<SystemInfoService> logger, IHubContext<MareHub, IMareHub> hubContext, IRedisDatabase redisDb, IConnectionMultiplexer connectionMultiplexer)
+        ILogger<SystemInfoService> logger, IHubContext<MareHub, IMareHub> hubContext, IRedisDatabase redisDb)
     {
         _mareMetrics = mareMetrics;
         _config = configurationService;
@@ -33,7 +33,7 @@ public class SystemInfoService : IHostedService, IDisposable
         _logger = logger;
         _hubContext = hubContext;
         _redis = redisDb;
-        _connectionMultiplexer = connectionMultiplexer;
+        _connectionMultiplexer = _redis.Database.Multiplexer;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
