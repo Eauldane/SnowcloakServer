@@ -142,19 +142,22 @@ public class Startup
 
         var options = ConfigurationOptions.Parse(redisConnection);
 
-        var endpoint = options.EndPoints[0];
-        string address = "";
-        int port = 0;
-        if (endpoint is DnsEndPoint dnsEndPoint) { address = dnsEndPoint.Host; port = dnsEndPoint.Port; }
-        if (endpoint is IPEndPoint ipEndPoint) { address = ipEndPoint.Address.ToString(); port = ipEndPoint.Port; }
+        var hosts = options.EndPoints
+            .Select(ep =>
+            {
+                if (ep is DnsEndPoint dns)   return (host: dns.Host,              port: dns.Port);
+                if (ep is IPEndPoint ip)     return (host: ip.Address.ToString(), port: ip.Port);
+                return (host: (string?)null, port: 0);
+            })
+            .Where(x => x.host != null)
+            .Distinct()
+            .Select(x => new RedisHost { Host = x.host!, Port = x.port })
+            .ToArray();
         var redisConfiguration = new RedisConfiguration()
         {
-            AbortOnConnectFail = true,
+            AbortOnConnectFail = false,
             KeyPrefix = "",
-            Hosts = new RedisHost[]
-            {
-                new RedisHost(){ Host = address, Port = port },
-            },
+            Hosts = hosts,
             AllowAdmin = true,
             ConnectTimeout = options.ConnectTimeout,
             Database = 0,
@@ -164,11 +167,11 @@ public class Startup
             {
                 Mode = ServerEnumerationStrategy.ModeOptions.All,
                 TargetRole = ServerEnumerationStrategy.TargetRoleOptions.Any,
-                UnreachableServerAction = ServerEnumerationStrategy.UnreachableServerActionOptions.Throw,
+                UnreachableServerAction = ServerEnumerationStrategy.UnreachableServerActionOptions.IgnoreIfOtherAvailable,
             },
             MaxValueLength = 1024,
             PoolSize = mareConfig.GetValue(nameof(ServerConfiguration.RedisPool), 50),
-            SyncTimeout = options.SyncTimeout,
+            SyncTimeout = Math.Max(options.SyncTimeout, 10000),
         };
 
         services.AddStackExchangeRedisExtensions<SystemTextJsonSerializer>(redisConfiguration);
