@@ -212,10 +212,10 @@ public partial class MareHub
             throw new System.Exception($"Max groups for user is {_maxExistingGroupsByUser}, max joined groups is {_maxJoinedGroupsByUser}.");
         }
 
-        var gid = StringUtils.GenerateRandomString(9);
+        var gid = StringUtils.GenerateRandomString(10);
         while (await DbContext.Groups.AnyAsync(g => g.GID == "SNOW-" + gid).ConfigureAwait(false))
         {
-            gid = StringUtils.GenerateRandomString(9);
+            gid = StringUtils.GenerateRandomString(10);
         }
         gid = "SNOW-" + gid;
 

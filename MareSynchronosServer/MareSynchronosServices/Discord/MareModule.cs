@@ -82,7 +82,7 @@ public class MareModule : InteractionModuleBase
                 var hasValidUid = false;
                 while (!hasValidUid)
                 {
-                    var uid = StringUtils.GenerateRandomString(7);
+                    var uid = StringUtils.GenerateRandomString(8);
                     if (db.Users.Any(u => u.UID == uid || u.Alias == uid)) continue;
                     user.UID = uid;
                     hasValidUid = true;
@@ -510,7 +510,7 @@ public class MareModule : InteractionModuleBase
         var hasValidUid = false;
         while (!hasValidUid)
         {
-            var uid = StringUtils.GenerateRandomString(7);
+            var uid = StringUtils.GenerateRandomString(8);
             if (await db.Users.AnyAsync(u => u.UID == uid || u.Alias == uid).ConfigureAwait(false)) continue;
             newUser.UID = uid;
             hasValidUid = true;
@@ -1195,7 +1195,7 @@ public class MareModule : InteractionModuleBase
                     var hasValidUid = false;
                     while (!hasValidUid)
                     {
-                        var uid = StringUtils.GenerateRandomString(7);
+                        var uid = StringUtils.GenerateRandomString(8);
                         if (db.Users.Any(u => u.UID == uid || u.Alias == uid)) continue;
                         user.UID = uid;
                         hasValidUid = true;

@@ -85,7 +85,7 @@ public class AccountRegistrationService
         var hasValidUid = false;
         while (!hasValidUid)
         {
-            var uid = StringUtils.GenerateRandomString(7);
+            var uid = StringUtils.GenerateRandomString(8);
             if (_mareDbContext.Users.Any(u => u.UID == uid || u.Alias == uid)) continue;
             user.UID = uid;
             hasValidUid = true;
