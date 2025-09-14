@@ -32,7 +32,7 @@ public class AccountRegistrationService
     private readonly ILogger<AccountRegistrationService> _logger;
     private readonly ConcurrentDictionary<string, IpRegistrationCount> _registrationsPerIp = new(StringComparer.Ordinal);
 
-    private Regex _registrationUserAgentRegex = new Regex(@"^MareSynchronos/", RegexOptions.Compiled, TimeSpan.FromMilliseconds(50));
+    
 
     public AccountRegistrationService(MareMetrics metrics, MareDbContext mareDbContext,
 		IServiceScopeFactory serviceScopeFactory, IConfigurationService<AuthServiceConfiguration> configuration,
@@ -49,7 +49,7 @@ public class AccountRegistrationService
     {
 		var reply = new RegisterReplyV2Dto();
 
-		if (!_registrationUserAgentRegex.Match(ua).Success)
+		if (!ua.StartsWith("MareSynchronos/", StringComparison.Ordinal))
         {
             reply.ErrorMessage = "User-Agent not allowed";
             return reply;
