@@ -646,7 +646,7 @@ public class MareModule : InteractionModuleBase
         var auth = await db.Auth.Include(u => u.PrimaryUser).SingleOrDefaultAsync(u => u.UserUID == dbUser.UID).ConfigureAwait(false);
         var groups = await db.Groups.Where(g => g.OwnerUID == dbUser.UID).ToListAsync().ConfigureAwait(false);
         var groupsJoined = await db.GroupPairs.Where(g => g.GroupUserUID == dbUser.UID).ToListAsync().ConfigureAwait(false);
-        var identity = await _connectionMultiplexer.GetDatabase().StringGetAsync("UID:" + dbUser.UID).ConfigureAwait(false);
+        var identity = await _connectionMultiplexer.GetDatabase().StringGetAsync("UID:" + dbUser.UID, CommandFlags.PreferReplica).ConfigureAwait(false);
 
         eb.WithTitle("User Information");
         eb.WithDescription("This is the user information for Discord User <@" + userToCheckForDiscordId + ">" + Environment.NewLine + Environment.NewLine

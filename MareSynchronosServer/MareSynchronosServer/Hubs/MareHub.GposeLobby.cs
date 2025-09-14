@@ -6,6 +6,7 @@ using MareSynchronosShared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace MareSynchronosServer.Hubs;
 
@@ -13,12 +14,12 @@ public partial class MareHub
 {
     private async Task<string?> GetUserGposeLobby()
     {
-        return await _redis.GetAsync<string>(GposeLobbyUser).ConfigureAwait(false);
+        return await _redis.GetAsync<string>(GposeLobbyUser, CommandFlags.PreferReplica).ConfigureAwait(false);
     }
 
     private async Task<List<string>> GetUsersInLobby(string lobbyId, bool includeSelf = false)
     {
-        var users = await _redis.GetAsync<List<string>>($"GposeLobby:{lobbyId}").ConfigureAwait(false);
+        var users = await _redis.GetAsync<List<string>>($"GposeLobby:{lobbyId}", CommandFlags.PreferReplica).ConfigureAwait(false);
         return users?.Where(u => includeSelf || !string.Equals(u, UserUID, StringComparison.Ordinal)).ToList() ?? [];
     }
 
@@ -68,7 +69,7 @@ public partial class MareHub
         while (string.IsNullOrEmpty(lobbyId))
         {
             lobbyId = StringUtils.GenerateRandomString(30, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
-            var result = await _redis.GetAsync<List<string>>($"GposeLobby:{lobbyId}").ConfigureAwait(false);
+            var result = await _redis.GetAsync<List<string>>($"GposeLobby:{lobbyId}", CommandFlags.PreferReplica).ConfigureAwait(false);
             if (result != null)
                 lobbyId = string.Empty;
         }

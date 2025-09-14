@@ -30,7 +30,7 @@ public class UserRequirementHandler : AuthorizationHandler<UserRequirement, HubI
 
         if ((requirement.Requirements & UserRequirements.Identified) is UserRequirements.Identified)
         {
-            var ident = await _redis.GetAsync<string>("UID:" + uid).ConfigureAwait(false);
+            var ident = await _redis.GetAsync<string>("UID:" + uid, CommandFlags.PreferReplica).ConfigureAwait(false);
             if (ident == RedisValue.EmptyString) context.Fail();
         }
 

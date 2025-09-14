@@ -46,7 +46,7 @@ public class AccountRegistrationService
             return reply;
         }
 
-        var registrationsByIp = await _redis.GetAsync<int>("IPREG:" + ip).ConfigureAwait(false);
+        var registrationsByIp = await _redis.GetAsync<int>("IPREG:" + ip, CommandFlags.PreferReplica).ConfigureAwait(false);
         if (registrationsByIp >= _configurationService.GetValueOrDefault(nameof(AuthServiceConfiguration.RegisterIpLimit), 3))
         {
             reply.ErrorMessage = "Too many registrations from this IP. Please try again later.";

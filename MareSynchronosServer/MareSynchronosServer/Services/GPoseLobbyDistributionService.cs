@@ -3,6 +3,7 @@ using MareSynchronos.API.SignalR;
 using MareSynchronosServer.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis.Extensions.Core.Abstractions;
+using StackExchange.Redis;
 
 namespace MareSynchronosServer.Services;
 
@@ -153,7 +154,7 @@ public sealed class GPoseLobbyDistributionService : IHostedService, IDisposable
                 if (!lobbyId.Value.Values.Any())
                     continue;
 
-                var gposeLobbyUsers = await _redisDb.GetAsync<List<string>>($"GposeLobby:{lobbyId.Key}").ConfigureAwait(false);
+                var gposeLobbyUsers = await _redisDb.GetAsync<List<string>>($"GposeLobby:{lobbyId.Key}", CommandFlags.PreferReplica).ConfigureAwait(false);
                 if (gposeLobbyUsers == null)
                     continue;
 
@@ -200,7 +201,7 @@ public sealed class GPoseLobbyDistributionService : IHostedService, IDisposable
                 if (!lobbyId.Value.Values.Any())
                     continue;
 
-                var gposeLobbyUsers = await _redisDb.GetAsync<List<string>>($"GposeLobby:{lobbyId.Key}").ConfigureAwait(false);
+                var gposeLobbyUsers = await _redisDb.GetAsync<List<string>>($"GposeLobby:{lobbyId.Key}", CommandFlags.PreferReplica).ConfigureAwait(false);
                 if (gposeLobbyUsers == null)
                     continue;
 

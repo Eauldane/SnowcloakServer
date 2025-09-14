@@ -16,6 +16,7 @@ using StackExchange.Redis.Extensions.Core.Abstractions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using StackExchange.Redis;
 
 namespace MareSynchronosAuthService.Controllers;
 
@@ -112,7 +113,7 @@ public class JwtController : Controller
             return Unauthorized("You are permanently banned.");
         }
 
-        var existingIdent = await _redis.GetAsync<string>("UID:" + authResult.Uid);
+        var existingIdent = await _redis.GetAsync<string>("UID:" + authResult.Uid, CommandFlags.PreferReplica);
         if (!string.IsNullOrEmpty(existingIdent)) return Unauthorized("Already logged in to this account. Reconnect in 60 seconds. If you keep seeing this issue, restart your game.");
 
         var token = CreateToken(new List<Claim>()

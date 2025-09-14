@@ -6,6 +6,7 @@ using MareSynchronos.API.Data;
 using MareSynchronos.API.Dto.Group;
 using MareSynchronosShared.Metrics;
 using Microsoft.AspNetCore.SignalR;
+using StackExchange.Redis;
 
 namespace MareSynchronosServer.Hubs;
 
@@ -118,14 +119,14 @@ public partial class MareHub
 
     private async Task<Dictionary<string, string>> GetOnlineUsers(List<string> uids)
     {
-        var result = await _redis.GetAllAsync<string>(uids.Select(u => "UID:" + u).ToHashSet(StringComparer.Ordinal)).ConfigureAwait(false);
+        var result = await _redis.GetAllAsync<string>(uids.Select(u => "UID:" + u).ToHashSet(StringComparer.Ordinal), CommandFlags.PreferReplica).ConfigureAwait(false);
         return uids.Where(u => result.TryGetValue("UID:" + u, out var ident) && !string.IsNullOrEmpty(ident)).ToDictionary(u => u, u => result["UID:" + u], StringComparer.Ordinal);
     }
 
     private async Task<string> GetUserIdent(string uid)
     {
         if (string.IsNullOrEmpty(uid)) return string.Empty;
-        return await _redis.GetAsync<string>("UID:" + uid).ConfigureAwait(false);
+        return await _redis.GetAsync<string>("UID:" + uid, CommandFlags.PreferReplica).ConfigureAwait(false);
     }
 
     private async Task RemoveUserFromRedis()
