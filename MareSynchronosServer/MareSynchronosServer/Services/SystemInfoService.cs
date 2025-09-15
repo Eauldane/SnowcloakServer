@@ -67,7 +67,7 @@ public class SystemInfoService : IHostedService, IDisposable
             {
                 _logger.LogTrace("Sending System Info, Online Users: {onlineUsers}", onlineUsers);
 
-                _hubContext.Clients.All.Client_UpdateSystemInfo(SystemInfoDto);
+                _ = _hubContext.Clients.All.Client_UpdateSystemInfo(SystemInfoDto);
 
                 using var scope = _services.CreateScope();
                 using var db = scope.ServiceProvider.GetService<MareDbContext>()!;

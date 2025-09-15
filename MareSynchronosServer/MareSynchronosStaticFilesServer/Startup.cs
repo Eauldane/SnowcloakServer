@@ -108,7 +108,7 @@ public class Startup
                 {
                     builder.MigrationsHistoryTable("_efmigrationshistory", "public");
                 }).UseSnakeCaseNamingConvention();
-                options.EnableThreadSafetyChecks(false);
+                options.EnableThreadSafetyChecks();
             }, mareConfig.GetValue(nameof(MareConfigurationBase.DbContextPoolSize), 1024));
 
             var signalRServiceBuilder = services.AddSignalR(hubOptions =>

@@ -245,7 +245,7 @@ public class Startup
                 builder.MigrationsHistoryTable("_efmigrationshistory", "public");
                 builder.MigrationsAssembly("MareSynchronosShared");
             }).UseSnakeCaseNamingConvention();
-            options.EnableThreadSafetyChecks(false);
+            options.EnableThreadSafetyChecks();
         }, mareConfig.GetValue(nameof(MareConfigurationBase.DbContextPoolSize), 1024));
         services.AddDbContextFactory<MareDbContext>(options =>
         {
@@ -254,7 +254,7 @@ public class Startup
                 builder.MigrationsHistoryTable("_efmigrationshistory", "public");
                 builder.MigrationsAssembly("MareSynchronosShared");
             }).UseSnakeCaseNamingConvention();
-            options.EnableThreadSafetyChecks(false);
+            options.EnableThreadSafetyChecks();
         });
     }
 

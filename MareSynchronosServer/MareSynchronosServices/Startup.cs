@@ -45,7 +45,7 @@ public class Startup
             {
                 builder.MigrationsHistoryTable("_efmigrationshistory", "public");
             }).UseSnakeCaseNamingConvention();
-            options.EnableThreadSafetyChecks(false);
+            options.EnableThreadSafetyChecks();
         }, Configuration.GetValue(nameof(MareConfigurationBase.DbContextPoolSize), 1024));
 
         services.AddSingleton(m => new MareMetrics(m.GetService<ILogger<MareMetrics>>(), new List<string> { },
