@@ -136,13 +136,17 @@ public partial class MareHub : Hub<IMareHub>, IMareHub
         _mareMetrics.DecGaugeWithLabels(MetricsAPI.GaugeConnections, labels: Continent);
         try
         {
-                _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
-                if (exception != null)
-                    _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
-
+            _logger.LogCallInfo(MareHubLogger.Args(_contextAccessor.GetIpAddress(), UserCharaIdent));
+            if (exception != null)
+                _logger.LogCallWarning(MareHubLogger.Args(_contextAccessor.GetIpAddress(), exception.Message, exception.StackTrace));
+            await _redis.SetRemoveAsync($"connections:{UserCharaIdent}", Context.ConnectionId).ConfigureAwait(false);
+            var connections = await _redis.SetMembersAsync<string>($"connections:{UserCharaIdent}").ConfigureAwait(false);
+            if (connections.Length == 0)
+            {
                 await GposeLobbyLeave().ConfigureAwait(false);
                 await RemoveUserFromRedis().ConfigureAwait(false);
                 await SendOfflineToAllPairedUsers().ConfigureAwait(false);
+            }
         }
         catch { }
 
